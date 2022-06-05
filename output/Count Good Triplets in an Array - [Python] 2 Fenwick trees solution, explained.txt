@@ -1,1 +1,0 @@
-https://leetcode.com/discuss/topic/1783180/python-2-fenwick-trees-solution-explained/
