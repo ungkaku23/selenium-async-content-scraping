@@ -5,57 +5,76 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 import pandas as pd
+import time
+import os
+
+def load_more_data(page):
+    solution_links = []
+    solution_labels = []
+    print(f"page {page}")
+    try:
+        wait = WebDriverWait(browser, 10)
+        element = wait.until(EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'flex w-full items-center justify-center mt-4')]")))
+        load_more_btn = browser.find_element(By.XPATH, "//div[contains(@class, 'flex w-full items-center justify-center mt-4')]")
+        load_more_btn.click()
+        time.sleep(3)
+        page += 1
+        load_more_data(page)
+    except TimeoutException:
+        print("Not found load more button")
+        
+        solution_elements = browser.find_elements(By.XPATH, "//a[contains(@data-tab, 'SOLUTIONS')]")
+        size = len(solution_elements)
+        if len(solution_elements) > 500:
+            size = 500
+
+        for x in range(size):
+            # solution_links.append(solution_elements[x].get_attribute("href"))
+            label_element = solution_elements[x].find_element(By.CSS_SELECTOR, 'span:nth-child(1)')
+            solution_labels.append(label_element.text)
+            text_file = open(f"./output/{label_element.text}.txt", "w")
+            n = text_file.write(solution_elements[x].get_attribute("href"))
+            text_file.close()
+
+def start_grab(logged_browser):
+    tabs = logged_browser.find_elements(By.CSS_SELECTOR, 'div.cursor-pointer')
+
+    current_directory = os.getcwd()
+    final_directory = os.path.join(current_directory, r'output')
+    if not os.path.exists(final_directory):
+        os.makedirs(final_directory)
+    
+    for tab in tabs:
+        link = tab.find_element(By.CSS_SELECTOR, 'span.whitespace-nowrap')
+        if link.text == "Solutions":
+            link.click()
+            try:
+                element = WebDriverWait(logged_browser, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//a[contains(@data-tab, 'SOLUTIONS')]"))
+                )
+
+                load_more_data(1)
+            except TimeoutException:
+                print("Loading took too much time!")
+
 
 browser = webdriver.Chrome('/usr/lib/chromium-browser/chromedriver')
-browser.get('https://leetcode.com/DBabichev/')
-tabs = browser.find_elements(By.CSS_SELECTOR, 'div.cursor-pointer')
-solution_links = []
-solution_labels = []
-for tab in tabs:
-    link = tab.find_element(By.CSS_SELECTOR, 'span.whitespace-nowrap')
-    if link.text == "Solutions":
-        link.click()
-        try:
-            element = WebDriverWait(browser, 10).until(
-                # EC.presence_of_element_located((By.XPATH, "//div[@class='cursor-pointer']"))
-                EC.presence_of_element_located((By.XPATH, "//a[contains(@data-tab, 'SOLUTIONS')]"))
-            )
-            # print(f'founder***:   {element}')
-            solution_elements = browser.find_elements(By.XPATH, "//a[contains(@data-tab, 'SOLUTIONS')]")
-            print(f"how many : {len(solution_elements)}")
-            for solution_element in solution_elements:
-                solution_links.append(solution_element.get_attribute("href"))
-                label_element = solution_element.find_element(By.CSS_SELECTOR, 'span:nth-child(1)')
-                solution_labels.append(label_element.text)
-            print(solution_links)
-            print(solution_labels)
+browser.get('https://leetcode.com/accounts/login/?next=/DBabichev/')
+try:
+    wait = WebDriverWait(browser, 10)
+    element = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@data-cy, 'username')]")))
+    print("Found form")
+    
+    username = browser.find_element(By.XPATH, "//input[contains(@data-cy, 'username')]")
+    password = browser.find_element(By.XPATH, "//input[contains(@data-cy, 'password')]")
 
-            df = pd.DataFrame(list(zip(solution_labels, solution_links)), columns=['Label', 'Link'])
+    username.send_keys("test23216")
+    password.send_keys("test23pw")
 
-            solution_data = df.to_csv('Solutions.csv', index=False)
-        except TimeoutException:
-            print("Loading took too much time!")
-
-# desc_list =[]
-# price_list = []
-# shipping_list = []
-# i = 0
-# while i < 2:
-#     try:
-#         beach_balls = browser.find_elements_by_css_selector('li.Grid-col.u-size-1-4-l.u-size-3-12-m.u-size-6-12.u-size-1-5-xl')
-
-#         for ball in beach_balls:
-#             desc = ball.find_element_by_css_selector('h2.prod-ProductTitle.no-margin.truncated.heading-b').text
-#             price = ball.find_element_by_css_selector('div.search-result-productprice.gridview').text.lstrip('Price\n')
-#             shipping = ball.find_element_by_css_selector('div.search-result-product-shipping-details.gridview').text
-
-#             desc_list.append(desc)
-#             price_list.append(price)
-#             shipping_list.append(shipping)
-
-#         browser.find_element_by_css_selector('button.paginator-btn.paginator-btn-next').click()
-#         i += 1
-
-#     except exceptions.StaleElementReferenceException:
-#          pass
+    browser.find_element(By.XPATH, "//button[contains(@data-cy, 'sign-in-btn')]").click()
+    time.sleep(3)
+    print("logged in")
+    start_grab(browser)
+except TimeoutException:
+    print("Not found form")
 
